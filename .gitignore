@@ -1,0 +1,32 @@
+# Python / backend
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+venv/
+.venv/
+app.db
+uploads/
+chroma_db/
+.env
+backend/.env
+
+# Logs
+*.log
+
+# Node / frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+/.idea/
+/.vscode/
+
+# Generated locks (keep main ones)
+pnpm-lock.yaml
+yarn.lock

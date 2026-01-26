@@ -1,0 +1,8 @@
+sqlalchemy
+chromadb
+pydantic
+PyMuPDF
+fastapi
+python-multipart
+python-dotenv
+openai>=1.60.0
