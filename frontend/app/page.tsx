@@ -4,14 +4,68 @@ import { useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { UploadCloud, ArrowRight, CheckCircle } from "lucide-react";
+import { useLanguage, type Language } from "@/lib/useLanguage";
+import { LanguageToggle } from "@/components/LanguageToggle";
+
+const TEXT: Record<
+  Language,
+  {
+    languageLabel: string;
+    title: string;
+    subtitle: string;
+    originalTitle: string;
+    suspectTitle: string;
+    pdfHint: string;
+    chooseFile: string;
+    uploaded: string;
+    start: string;
+    starting: string;
+    uploadSuccess: (name: string) => string;
+    uploadFail: string;
+    startFail: string;
+  }
+> = {
+  zh: {
+    languageLabel: "语言",
+    title: "AI 论文查重系统",
+    subtitle: "基于向量数据库的语义级查重",
+    originalTitle: "基准文档（Original）",
+    suspectTitle: "待查文档（Suspect）",
+    pdfHint: "支持 PDF 格式",
+    chooseFile: "选择文件",
+    uploaded: "文件已就绪",
+    start: "开始语义分析",
+    starting: "正在初始化...",
+    uploadSuccess: (name) => `${name} 上传成功，后端正在解析...`,
+    uploadFail: "上传失败",
+    startFail: "启动分析失败",
+  },
+  en: {
+    languageLabel: "Language",
+    title: "AI Paper Comparator",
+    subtitle: "Semantic plagiarism detection powered by a vector database",
+    originalTitle: "Reference document (Original)",
+    suspectTitle: "Document to check (Suspect)",
+    pdfHint: "PDF only",
+    chooseFile: "Choose file",
+    uploaded: "File ready",
+    start: "Start similarity analysis",
+    starting: "Initializing...",
+    uploadSuccess: (name) => `${name} uploaded. Backend is parsing...`,
+    uploadFail: "Upload failed",
+    startFail: "Failed to start analysis",
+  },
+};
 
 export default function Home() {
   const router = useRouter();
+  const { lang, setLang } = useLanguage();
+  const t = TEXT[lang];
+
   const [sourceId, setSourceId] = useState<number | null>(null);
   const [targetId, setTargetId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 通用的上传处理函数
   const handleUpload = async (
     e: ChangeEvent<HTMLInputElement>,
     setType: (id: number) => void
@@ -22,23 +76,21 @@ export default function Home() {
     try {
       const res = await api.uploadFile(file);
       setType(res.id);
-      alert(`${file.name} 上传成功，后台正在解析...`);
+      alert(t.uploadSuccess(file.name));
     } catch (err) {
       console.error(err);
-      alert("上传失败");
+      alert(t.uploadFail);
     }
   };
 
-  // 开始分析
   const handleAnalyze = async () => {
     if (!sourceId || !targetId) return;
     setLoading(true);
     try {
       const res = await api.startComparison(sourceId, targetId);
-      // 跳转到报告页面 (带上 task_id)
       router.push(`/report/${res.task_id}`);
     } catch (err) {
-      alert("启动分析失败");
+      alert(t.startFail);
       setLoading(false);
     }
   };
@@ -46,31 +98,35 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8">
       <div className="max-w-4xl w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900">AI 论文查重系统</h1>
-          <p className="mt-2 text-gray-600">
-            Semantic Plagiarism Detection powered by Vector Database
-          </p>
+        <div className="flex justify-end">
+          <LanguageToggle lang={lang} onChange={setLang} label={t.languageLabel} />
         </div>
 
-        {/* 双栏上传区 */}
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold text-gray-900">{t.title}</h1>
+          <p className="text-gray-600">{t.subtitle}</p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-          {/* 左边：基准论文 */}
           <UploadCard
-            title="基准论文 (Original)"
+            title={t.originalTitle}
+            pdfHint={t.pdfHint}
+            chooseFile={t.chooseFile}
+            uploadedText={t.uploaded}
             isUploaded={!!sourceId}
             onChange={(e) => handleUpload(e, setSourceId)}
           />
 
-          {/* 右边：待测论文 */}
           <UploadCard
-            title="待测论文 (Suspect)"
+            title={t.suspectTitle}
+            pdfHint={t.pdfHint}
+            chooseFile={t.chooseFile}
+            uploadedText={t.uploaded}
             isUploaded={!!targetId}
             onChange={(e) => handleUpload(e, setTargetId)}
           />
         </div>
 
-        {/* 底部按钮 */}
         <div className="flex justify-center mt-8">
           <button
             onClick={handleAnalyze}
@@ -84,10 +140,10 @@ export default function Home() {
             `}
           >
             {loading ? (
-              "正在初始化..."
+              t.starting
             ) : (
               <>
-                开始深度分析 <ArrowRight size={20} />
+                {t.start} <ArrowRight size={20} />
               </>
             )}
           </button>
@@ -97,13 +153,18 @@ export default function Home() {
   );
 }
 
-// 简单的上传卡片组件
 function UploadCard({
   title,
+  pdfHint,
+  chooseFile,
+  uploadedText,
   isUploaded,
   onChange,
 }: {
   title: string;
+  pdfHint: string;
+  chooseFile: string;
+  uploadedText: string;
   isUploaded: boolean;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
 }) {
@@ -122,12 +183,12 @@ function UploadCard({
       ) : (
         <UploadCloud size={48} className="text-gray-400 mb-4" />
       )}
-      <h3 className="text-xl font-semibold text-gray-700">{title}</h3>
-      <p className="text-sm text-gray-500 mt-2 mb-6">支持 PDF 格式</p>
+      <h3 className="text-xl font-semibold text-gray-700 text-center">{title}</h3>
+      <p className="text-sm text-gray-500 mt-2 mb-6">{pdfHint}</p>
 
       {!isUploaded && (
         <label className="cursor-pointer bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 shadow-sm">
-          选择文件
+          {chooseFile}
           <input
             type="file"
             className="hidden"
@@ -137,7 +198,7 @@ function UploadCard({
         </label>
       )}
       {isUploaded && (
-        <span className="text-green-600 font-medium">文件已就绪</span>
+        <span className="text-green-600 font-medium">{uploadedText}</span>
       )}
     </div>
   );
